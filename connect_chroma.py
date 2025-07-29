@@ -20,6 +20,7 @@ client_settings = Settings(
     chroma_server_http_port=8000,  # 서버에서 사용하는 포트
 )
 
+# 추후 전처리된 텍스트로 변경
 cleaned_trace_list = [
     "GET /login 200 OK",
     "POST /api/login 500 internal server error",
