@@ -8,5 +8,5 @@
 1. chroma_test/app 경로에서 npm run dev 실행
 2. connect_chroma.py 파일이 있는 경로에서 uvicorn connect_chroma:app --reload --port 9000 실행
 3. http://localhost:3000 접속 시 아래의 화면 확인 가능
-4. <img width="716" height="307" alt="스크린샷 2025-07-29 오후 7 58 16" src="https://github.com/user-attachments/assets/eef89717-b990-46e9-b08e-60b93cd23a09" />
+<img width="716" height="307" alt="스크린샷 2025-07-29 오후 7 58 16" src="https://github.com/user-attachments/assets/eef89717-b990-46e9-b08e-60b93cd23a09" />
    
