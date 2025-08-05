@@ -1,14 +1,30 @@
+# ───── 표준 라이브러리 ───────────────────────────────
+import json, re, uuid
 from typing import TypedDict, List
-from langgraph.graph import StateGraph, END
-from langchain.vectorstores.base import VectorStoreRetriever
+
+# ───── 환경 변수 로드 ────────────────────────────────
+from dotenv import load_dotenv
+
+# ───── LangChain Core & Schema ──────────────────────
 from langchain_core.documents import Document
-from langchain.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage
-import json, re
+
+# ───── LangChain Chat 모델 ──────────────────────────
+from langchain_community.chat_models import ChatOpenAI
+
+# ───── LangChain 벡터 스토어 ────────────────────────
+from langchain_community.vectorstores import Chroma
+from langchain.vectorstores.base import VectorStoreRetriever
+from langchain_community.embeddings import OpenAIEmbeddings
+
+# ───── LangGraph ────────────────────────────────────
+from langgraph.graph import StateGraph, END
+
+# ───── 사용자 정의 모듈 ──────────────────────────────
 from chroma_setup import vectorstore
 
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OpenAIEmbeddings
+
+load_dotenv()
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
@@ -19,10 +35,9 @@ vectorstore = Chroma(
     client=vectorstore,
 )
 
-internal_collection = vectorstore._collection
+collection = vectorstore._collection
 
-data = internal_collection.get(include=["documents"])
-print(f"[DEBUG] Chroma DB에서 {len(data.get('documents', []))}개의 문서 로드 완료")
+data = collection.get(include=["documents"])
 
 retriever = vectorstore.as_retriever(
     search_type="similarity_score_threshold",
@@ -157,6 +172,7 @@ def llm_judgment(state: TraceState) -> TraceState:
 def final_decision(state: TraceState) -> TraceState:
     decision = state.get("decision", "unknown").lower()
     if decision != "suspicious":
+
         return state
 
     query = " ".join(state.get("cleaned_trace", []))
@@ -206,7 +222,34 @@ def final_decision(state: TraceState) -> TraceState:
     return {**state, "llm_output": output, "decision": decision, "reason": reason}
 
 
+def save_final_decision_to_chroma(state: TraceState) -> None:
+    cleaned_trace = state.get("cleaned_trace")
+    decision = state.get("decision")
+    reason = state.get("reason")
+    llm_output = state.get("llm_output")
+
+    document = " ".join(cleaned_trace)
+    metadata = {
+        "decision": decision,
+        "reason": reason,
+        "llm_output": llm_output,
+    }
+    doc_id = str(uuid.uuid4())
+
+    collection.add(
+        documents=[document],
+        metadatas=[metadata],
+        ids=[doc_id],
+    )
+
+    print(f"[INFO] 최종 판단 결과 저장 완료 \n")
+
+
 # ----------------------- #
+
+# opensearch_setup.py 실행
+from opensearch_setup import summarized
+
 
 # LangGraph 생성
 workflow = StateGraph(TraceState)
@@ -215,27 +258,32 @@ workflow.add_node("Preprocess", preprocess_logs)
 workflow.add_node("SimilaritySearch", search_similar_logs)
 workflow.add_node("LLMJudgment", llm_judgment)
 workflow.add_node("Decision", final_decision)
+workflow.add_node("SaveToChroma", save_final_decision_to_chroma)
 
 workflow.set_entry_point("Preprocess")  # 시작 노드
 workflow.add_edge("Preprocess", "SimilaritySearch")
 workflow.add_edge("SimilaritySearch", "LLMJudgment")
 workflow.add_edge("LLMJudgment", "Decision")
-workflow.add_edge("Decision", END)
+workflow.add_edge("Decision", "SaveToChroma")
+workflow.add_edge("SaveToChroma", END)  # 종료 노드
 
 graph = workflow.compile()
 
-# 그래프 실행
-input_state = {
-    "cleaned_trace": ["multiple failed ssh login attempts from unknown ip"],
-    "similar_logs": [],
-    "llm_output": "",
-    "decision": "",
-    "reason": "",
-    "retriever": retriever,
-}
+results = []
+for trace in summarized:
+    input_state = {
+        "cleaned_trace": [trace],
+        "similar_logs": [],
+        "llm_output": "",
+        "decision": "",
+        "reason": "",
+        "retriever": retriever,
+    }
+    result = graph.invoke(input_state)
+    results.append(result)
 
-result = graph.invoke(input_state)
-
-print("최종 결과:")
-for k, v in result.items():
-    print(f"{k}: {v}")
+# 결과 출력
+for i, res in enumerate(results):
+    print(f"==== 로그 {i+1} 결과 ====")
+    for k, v in res.items():
+        print(f"{k}: {v}")

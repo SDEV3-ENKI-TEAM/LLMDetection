@@ -64,16 +64,3 @@ def get_embeddings():
             {"text": doc, "embedding": emb_list[:10]}
         )  # 임베딩 앞 10개만 반환
     return result
-
-
-# @app.delete("/clear")
-# def reset_collection():
-#     # 모든 document ID 가져오기
-#     all_ids = db._collection.get(include=[])["ids"]
-
-#     if all_ids:
-#         db._collection.delete(ids=all_ids)
-
-#         return {"status": f"{len(all_ids)} documents deleted"}
-#     else:
-#         return {"status": "No documents to delete"}
