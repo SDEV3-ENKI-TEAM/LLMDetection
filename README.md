@@ -2,8 +2,8 @@ LLM 기반 이상 탐지
 --- 
 
 ### .env 파일 생성 필요
-OPENAI_API_KEY=sk-proj-h...
-CHROMA_OPENAI_API_KEY=sk-proj-h...
+OPENAI_API_KEY=sk-proj-h... <br>
+CHROMA_OPENAI_API_KEY=sk-proj-h... <br>
 OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com 
 <br>
 <br>
