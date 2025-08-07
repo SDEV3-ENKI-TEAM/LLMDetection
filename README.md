@@ -1,6 +1,12 @@
 LLM 기반 이상 탐지
 --- 
 
+### .env 파일 생성 필요
+OPENAI_API_KEY=sk-proj-h...
+CHROMA_OPENAI_API_KEY=sk-proj-h...
+OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com 
+
+
 ### 흐름
 1. AWS Opensearch에서 trace 가져옴
 2. 데이터 전처리, 요약해서 자연어로 변환
