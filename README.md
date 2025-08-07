@@ -6,6 +6,7 @@ OPENAI_API_KEY=sk-proj-h...
 CHROMA_OPENAI_API_KEY=sk-proj-h...
 OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com 
 <br>
+<br>
 
 
 ### 흐름
