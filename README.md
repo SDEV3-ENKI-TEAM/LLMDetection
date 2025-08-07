@@ -5,6 +5,7 @@ LLM 기반 이상 탐지
 OPENAI_API_KEY=sk-proj-h...
 CHROMA_OPENAI_API_KEY=sk-proj-h...
 OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com 
+<br>
 
 
 ### 흐름
