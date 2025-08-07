@@ -23,7 +23,7 @@ LLM 기반 이상 탐지
 
 
 
-### chomadb 테스트
+### chomadb API
 1. uvicorn chroma_api:app --reload --port 9000 실행
 2. http://127.0.0.1:9000 접속
 3. /log 경로에서 원본 트레이스 ID, 요약된 로그, 메타데이터 확인
