@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from chroma_setup import vectorstore
 
 app = FastAPI()
@@ -27,10 +28,24 @@ def default():
 @app.get("/logs")
 def get_logs():
     data = db_collection.get(include=["documents", "metadatas"])
-    return {
-        "original": data.get("documents", []),
-        "metadata": data.get("metadatas", []),
-    }
+    trace_ids = data.get("ids", [])
+    documents = data.get("documents", [])
+    metadatas = data.get("metadatas", [])
+
+    # 묶어서 반환
+    combined = []
+    for i in range(len(trace_ids)):
+        combined.append(
+            {
+                "trace_id": trace_ids[i],
+                "summary": documents[i],
+                "metadata": metadatas[i],
+            }
+        )
+
+    return JSONResponse(
+        content={"logs": combined}, media_type="application/json; charset=utf-8"
+    )
 
 
 @app.get("/search")

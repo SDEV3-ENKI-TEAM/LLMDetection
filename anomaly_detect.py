@@ -23,7 +23,6 @@ from langgraph.graph import StateGraph, END
 # ───── 사용자 정의 모듈 ──────────────────────────────
 from chroma_setup import vectorstore
 
-
 load_dotenv()
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
@@ -51,7 +50,8 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 
 class TraceState(TypedDict):
-    cleaned_trace: List[str]
+    trace_id: str  # 트레이스 ID
+    cleaned_trace: str
     similar_logs: List[str]
     similar_metadata: List[dict]  # 유사 로그의 메타데이터
     llm_output: str
@@ -101,7 +101,8 @@ def search_similar_logs(state: TraceState) -> TraceState:
 # 유사 로그가 있는 경우 유사 로그의 메타데이터를 활용해 이상 여부 판단
 # 유사 로그가 없는 경우 전체 판단을 위해 LLM을 호출
 def llm_judgment(state: TraceState) -> TraceState:
-    query = " ".join(state.get("cleaned_trace", []))
+    query = " ".join(state["cleaned_trace"])
+
     similar_logs = state.get("similar_logs", [])
     similar_metadata = state.get("similar_metadata", [])
 
@@ -175,7 +176,7 @@ def final_decision(state: TraceState) -> TraceState:
 
         return state
 
-    query = " ".join(state.get("cleaned_trace", []))
+    query = " ".join(state["cleaned_trace"])
 
     similar_logs = state.get("similar_logs", [])[:5]  # 최대 5개
     similar_metadata = state.get("similar_metadata", [])[:5] if similar_logs else []
@@ -223,6 +224,7 @@ def final_decision(state: TraceState) -> TraceState:
 
 
 def save_final_decision_to_chroma(state: TraceState) -> None:
+    trace_id = state.get("trace_id")
     cleaned_trace = state.get("cleaned_trace")
     decision = state.get("decision")
     reason = state.get("reason")
@@ -234,15 +236,20 @@ def save_final_decision_to_chroma(state: TraceState) -> None:
         "reason": reason,
         "llm_output": llm_output,
     }
-    doc_id = str(uuid.uuid4())
 
     collection.add(
         documents=[document],
         metadatas=[metadata],
-        ids=[doc_id],
+        ids=[trace_id],
     )
 
     print(f"[INFO] 최종 판단 결과 저장 완료 \n")
+
+    # 1. 해당 trace_id에 span이 추가된 경우
+    # for item in summarized:
+    #     print(f"Trace ID: {item['trace_id']}, Summary: {item['summary']}")
+
+    # 2. 새로운 trace_id를 생성하고 span을 추가
 
 
 # ----------------------- #
@@ -272,7 +279,8 @@ graph = workflow.compile()
 results = []
 for trace in summarized:
     input_state = {
-        "cleaned_trace": [trace],
+        "trace_id": trace["trace_id"],
+        "cleaned_trace": trace["summary"],
         "similar_logs": [],
         "llm_output": "",
         "decision": "",

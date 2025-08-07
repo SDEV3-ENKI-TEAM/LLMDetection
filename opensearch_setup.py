@@ -168,14 +168,33 @@ def summarize_chunk_korean(df):
         temperature=0.2,
     )
 
+    # 첫번째 응답의 응답 텍스트에서 앞뒤 공백 제거
     return resp.choices[0].message.content.strip()
 
 
-# 트레이스 요약 결과
+# # 트레이스 요약 결과
 summarized = []
 
 # import 할 때 자동 실행
 all_trace_ids = list_trace_ids(opensearch_client)
 for trace in all_trace_ids:
-    spans = get_trace_spans(trace["trace_id"], size=5000)
-    summarized.append(summarize_chunk_korean(spans))
+    trace_id = trace["trace_id"]
+    spans = get_trace_spans(trace_id, size=5000)
+    summary = summarize_chunk_korean(spans)
+
+    summarized.append(
+        {
+            "trace_id": trace_id,
+            "summary": summary,
+        }
+    )
+
+# print("[DEBUG] Summarized traces:")
+# for item in summarized:
+#     print(f"Trace ID: {item['trace_id']}, Summary: {item['summary']}")
+
+# # import 할 때 자동 실행
+# all_trace_ids = list_trace_ids(opensearch_client)
+# for trace in all_trace_ids:
+#     spans = get_trace_spans(trace["trace_id"], size=5000)
+#     summarized.append(summarize_chunk_korean(spans))
