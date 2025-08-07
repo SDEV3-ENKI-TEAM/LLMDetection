@@ -1,5 +1,5 @@
 # ───── 표준 라이브러리 ───────────────────────────────
-import json, re, uuid
+import json, re
 from typing import TypedDict, List
 
 # ───── 환경 변수 로드 ────────────────────────────────
@@ -36,11 +36,9 @@ vectorstore = Chroma(
 
 collection = vectorstore._collection
 
-data = collection.get(include=["documents"])
-
 retriever = vectorstore.as_retriever(
     search_type="similarity_score_threshold",
-    search_kwargs={"score_threshold": 0.7},
+    search_kwargs={"score_threshold": 0.7},  # 유사도 임계값 설정
 )
 
 
@@ -63,14 +61,6 @@ class TraceState(TypedDict):
 # ----------------------- #
 
 # ------- 노드 정의 ------- #
-
-
-# 로그 전처리: 공백 제거 및 소문자 변환-> 해야 되나?
-def preprocess_logs(state: TraceState) -> TraceState:
-    trace = state.get("cleaned_trace", [])
-    # cleaned = [line.strip().lower() for line in raw_trace]
-
-    return {**state, "cleaned_trace": trace}
 
 
 # 유사 로그 검색: 벡터 DB에서 유사 로그 검색
@@ -219,7 +209,6 @@ def final_decision(state: TraceState) -> TraceState:
     reason = result.get("reason", "")
 
     output = f"최종 판단: {decision}"
-    print(f"[DEBUG] 최종 LLM 판단 결과: {output}")
     return {**state, "llm_output": output, "decision": decision, "reason": reason}
 
 
@@ -228,28 +217,20 @@ def save_final_decision_to_chroma(state: TraceState) -> None:
     cleaned_trace = state.get("cleaned_trace")
     decision = state.get("decision")
     reason = state.get("reason")
-    llm_output = state.get("llm_output")
 
     document = " ".join(cleaned_trace)
     metadata = {
         "decision": decision,
         "reason": reason,
-        "llm_output": llm_output,
     }
 
     collection.add(
         documents=[document],
         metadatas=[metadata],
-        ids=[trace_id],
+        ids=[trace_id],  # ID 중복 시 overwrite ..
     )
 
     print(f"[INFO] 최종 판단 결과 저장 완료 \n")
-
-    # 1. 해당 trace_id에 span이 추가된 경우
-    # for item in summarized:
-    #     print(f"Trace ID: {item['trace_id']}, Summary: {item['summary']}")
-
-    # 2. 새로운 trace_id를 생성하고 span을 추가
 
 
 # ----------------------- #
@@ -261,14 +242,12 @@ from opensearch_setup import summarized
 # LangGraph 생성
 workflow = StateGraph(TraceState)
 
-workflow.add_node("Preprocess", preprocess_logs)
 workflow.add_node("SimilaritySearch", search_similar_logs)
 workflow.add_node("LLMJudgment", llm_judgment)
 workflow.add_node("Decision", final_decision)
 workflow.add_node("SaveToChroma", save_final_decision_to_chroma)
 
-workflow.set_entry_point("Preprocess")  # 시작 노드
-workflow.add_edge("Preprocess", "SimilaritySearch")
+workflow.set_entry_point("SimilaritySearch")  # 시작 노드
 workflow.add_edge("SimilaritySearch", "LLMJudgment")
 workflow.add_edge("LLMJudgment", "Decision")
 workflow.add_edge("Decision", "SaveToChroma")

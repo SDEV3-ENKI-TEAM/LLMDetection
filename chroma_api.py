@@ -48,26 +48,6 @@ def get_logs():
     )
 
 
-@app.get("/search")
-def search_logs(q: str, threshold: float = 1.0):
-    try:
-        results = db_collection.query(query_texts=[q], n_results=5)
-        ids = results.get("ids", [])
-        docs = results.get("documents", [])
-        distances = results.get("distances", [])
-
-        # 임계값 이상(이하)인 결과만 필터링, 거리가 작을수록 유사도 높음이라고 가정
-        filtered = []
-        for _id, doc, dist in zip(ids, docs, distances):
-            # if dist <= threshold:  # 임계값 이하일 때만 포함
-            filtered.append({"id": _id, "document": doc, "score": dist})
-
-        return {"results": filtered}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
 @app.get("/embeddings")
 def get_embeddings():
     data = db_collection.get(include=["embeddings", "documents"], limit=10)

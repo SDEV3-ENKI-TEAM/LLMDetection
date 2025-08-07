@@ -1,14 +1,10 @@
-import os
+import os, boto3, openai
 import pandas as pd
-from pprint import pprint
-import boto3
 from requests_aws4auth import AWS4Auth
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from dotenv import load_dotenv
 from datetime import datetime
 from openai import OpenAI
-import openai
-import re
 
 load_dotenv()
 
@@ -25,6 +21,8 @@ awsauth = AWS4Auth(
 
 ALLOWED_FMTS = ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
 OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST")
+TRACE_INDEX = os.getenv("TRACE_INDEX_PATTERN", "jaeger-span-*")
+
 opensearch_client = OpenSearch(
     hosts=[
         {
@@ -39,27 +37,8 @@ opensearch_client = OpenSearch(
 )
 
 
-def millis_to_str(ms: int) -> str:
-    return datetime.fromtimestamp(ms / 1000.0).strftime("%Y-%m-%dT%H:%M:%S")
-
-
-def resolve_latest_index(client: OpenSearch, pattern: str) -> str:
-    resp = client.cat.indices(index=pattern, format="json", h=["index"])
-    date_re = re.compile(r"jaeger-span-(\d{4}-\d{2}-\d{2})")
-    candidates = []
-    for entry in resp:
-        m = date_re.match(entry["index"])
-        if m:
-            candidates.append(
-                (datetime.strptime(m.group(1), "%Y-%m-%d"), entry["index"])
-            )
-    return max(candidates, key=lambda x: x[0])[1] if candidates else resp[0]["index"]
-
-
 # 전체 트레이스 ID 목록 가져오기
 def list_trace_ids(client: OpenSearch, limit: int = 100, order: str = "desc"):
-    pattern = os.getenv("TRACE_INDEX_PATTERN", "jaeger-span-*")
-    TRACE_INDEX = resolve_latest_index(client, pattern)
 
     body = {
         "size": 0,
@@ -93,18 +72,13 @@ def list_trace_ids(client: OpenSearch, limit: int = 100, order: str = "desc"):
 
 # 트레이스 ID로 스팬 정보 가져와서 필요한 필드만 뽑아 DataFrame으로 반환
 def get_trace_spans(trace_id: str, size: int = 1000) -> pd.DataFrame:
-    """
-    특정 trace_id의 모든 span을 DataFrame으로 반환
-    """
-    pattern = os.getenv("TRACE_INDEX_PATTERN", "jaeger-span-*")
-
     body = {
         "query": {"term": {"traceID": trace_id}},
         "sort": [{"startTimeMillis": {"order": "asc"}}],
         "size": size,
     }
 
-    data = opensearch_client.search(index=pattern, body=body)
+    data = opensearch_client.search(index=TRACE_INDEX, body=body)
 
     # 필요한 정보를 저장할 리스트
     processed_data = []
@@ -144,8 +118,7 @@ def summarize_chunk_korean(df):
     openai.api_key = os.getenv("OPENAI_API_KEY")
     client = OpenAI()
 
-    # CHAT_MODEL 명시
-    CHAT_MODEL = "gpt-4o"  # 또는 gpt-4-turbo
+    CHAT_MODEL = "gpt-4o"
 
     # df를 문자열로 변환 (예: json이나 tabular format)
     log_text = df.to_json(orient="records", force_ascii=False, indent=2)
@@ -188,13 +161,3 @@ for trace in all_trace_ids:
             "summary": summary,
         }
     )
-
-# print("[DEBUG] Summarized traces:")
-# for item in summarized:
-#     print(f"Trace ID: {item['trace_id']}, Summary: {item['summary']}")
-
-# # import 할 때 자동 실행
-# all_trace_ids = list_trace_ids(opensearch_client)
-# for trace in all_trace_ids:
-#     spans = get_trace_spans(trace["trace_id"], size=5000)
-#     summarized.append(summarize_chunk_korean(spans))
