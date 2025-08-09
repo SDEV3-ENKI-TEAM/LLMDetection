@@ -17,8 +17,6 @@ from langchain_community.vectorstores import Chroma
 from langchain.vectorstores.base import VectorStoreRetriever
 from langchain_community.embeddings import OpenAIEmbeddings
 
-# ───── LangGraph ────────────────────────────────────
-from langgraph.graph import StateGraph, END
 
 # ───── 사용자 정의 모듈 ──────────────────────────────
 from chroma_setup import vectorstore
@@ -204,6 +202,8 @@ def final_decision(state: TraceState) -> TraceState:
     cleaned = re.sub(r"\n?```$", "", cleaned.strip())
 
     result = json.loads(cleaned)
+    if isinstance(result, list):
+        result = result[0] if result else {}
 
     decision = result.get("decision", "suspicious").lower()
     reason = result.get("reason", "")
@@ -231,46 +231,3 @@ def save_final_decision_to_chroma(state: TraceState) -> None:
     )
 
     print(f"[INFO] 최종 판단 결과 저장 완료 \n")
-
-
-# ----------------------- #
-
-# opensearch_setup.py 실행
-from opensearch_setup import summarized
-
-
-# LangGraph 생성
-workflow = StateGraph(TraceState)
-
-workflow.add_node("SimilaritySearch", search_similar_logs)
-workflow.add_node("LLMJudgment", llm_judgment)
-workflow.add_node("Decision", final_decision)
-workflow.add_node("SaveToChroma", save_final_decision_to_chroma)
-
-workflow.set_entry_point("SimilaritySearch")  # 시작 노드
-workflow.add_edge("SimilaritySearch", "LLMJudgment")
-workflow.add_edge("LLMJudgment", "Decision")
-workflow.add_edge("Decision", "SaveToChroma")
-workflow.add_edge("SaveToChroma", END)  # 종료 노드
-
-graph = workflow.compile()
-
-results = []
-for trace in summarized:
-    input_state = {
-        "trace_id": trace["trace_id"],
-        "cleaned_trace": trace["summary"],
-        "similar_logs": [],
-        "llm_output": "",
-        "decision": "",
-        "reason": "",
-        "retriever": retriever,
-    }
-    result = graph.invoke(input_state)
-    results.append(result)
-
-# 결과 출력
-for i, res in enumerate(results):
-    print(f"==== 로그 {i+1} 결과 ====")
-    for k, v in res.items():
-        print(f"{k}: {v}")
