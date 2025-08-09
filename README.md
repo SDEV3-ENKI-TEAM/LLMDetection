@@ -21,7 +21,7 @@ OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com
 
 
 ### 이상 탐지 실행
-1. anomaly_detect.py 파일 실행
+1. Detector/detect.py 파일 실행
 2. 터미널 출력 결과 예시
 <img width="1110" height="729" alt="스크린샷 2025-08-05 오후 3 06 14" src="https://github.com/user-attachments/assets/508c9c56-8082-4226-a6d0-a11ebb9a1d42" />
 
