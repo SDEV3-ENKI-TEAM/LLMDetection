@@ -16,7 +16,7 @@ OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com
    * 유사 로그가 있는 경우: 유사 로그의 메타데이터를 참고하여 판단
    * 유사 로그가 없는 경우: LLM 판단
 4. decision이 suspicious가 나온 경우 재판단 요청
-5. 결과 kakfa producer(토픽 2) 로 전송
+5. 결과 kakfa producer(토픽 2: ai-result-topic) 로 전송
 <br>
 
 
