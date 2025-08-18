@@ -28,7 +28,8 @@ OPENSEARCH_HOST=search-eventagentservice ~~~ .ap-northeast-2.es.amazonaws.com
 <br>
 <br>
 
-
+### kafka 테스트
+1. kafka/consumer.py 실행하면 터미널에서 실시간 전송되는 이상 탐지 결고 확인 가능
 
 
 ### chomadb API
