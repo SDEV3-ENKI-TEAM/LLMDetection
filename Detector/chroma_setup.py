@@ -5,7 +5,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-vectorstore = chromadb.HttpClient(host="43.201.65.178", port="8000")
+#vectorstore = chromadb.HttpClient(host="43.201.65.178", port="8000")
+
+vectorstore = chromadb.PersistentClient(path="./chroma_db")
 
 # 컬렉션 삭제
 # vectorstore.delete_collection(name="my_log_db")
