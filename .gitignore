@@ -1,3 +1,5 @@
 .env
 README.md
 tempCodeRunnerFile.py
+_pycache_/
+Detector/_pycache_/
